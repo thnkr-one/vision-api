@@ -3,141 +3,205 @@ package processor
 import (
 	"fmt"
 	"time"
+
+	"github.com/thnkr-one/vision-api/internal/image"
+	"github.com/thnkr-one/vision-api/pkg/vision"
 )
 
-// Options contains configuration for the Vision API client
+// Options contains configuration for the image processor
 type Options struct {
-	// RateLimit specifies requests per minute limit
-	RateLimit int
+	// PoolSize is the number of concurrent processors
+	PoolSize int
 
-	// MaxRetries specifies maximum number of retry attempts
-	MaxRetries int
+	// BatchSize is the number of images to process in a batch
+	BatchSize int
 
-	// InitialBackoff specifies the initial backoff duration
-	InitialBackoff time.Duration
+	// RetryAttempts is the maximum number of retry attempts
+	RetryAttempts int
 
-	// MaxBackoff specifies the maximum backoff duration
-	MaxBackoff time.Duration
+	// RetryDelay is the initial delay between retries
+	RetryDelay time.Duration
 
-	// Timeout specifies the timeout for individual requests
-	Timeout time.Duration
+	// MaxRetryDelay is the maximum delay between retries
+	MaxRetryDelay time.Duration
 
-	// MaxConcurrent specifies maximum concurrent requests
-	MaxConcurrent int
+	// ImageHandler handles image processing operations
+	ImageHandler image.Handler
 
-	// Debug enables debug logging
-	Debug bool
+	// VisionClient is the client for the Vision API
+	VisionClient *vision.Client
 
-	// ProjectID specifies the Google Cloud project ID
-	ProjectID string
+	// MaxFileSize is the maximum file size in bytes
+	MaxFileSize int64
 
-	// Credentials specifies the path to service account credentials
-	Credentials string
+	// OutputDir is the directory for processed outputs
+	OutputDir string
+
+	// TempDir is the directory for temporary files
+	TempDir string
+
+	// DeleteTempFiles determines if temporary files should be deleted
+	DeleteTempFiles bool
+
+	// AllowedFormats is a list of allowed image formats
+	AllowedFormats []string
 }
 
 // OptionFunc is a function that configures Options
 type OptionFunc func(*Options)
 
-// defaultOptions returns the default configuration options
+// defaultOptions returns the default processor options
 func defaultOptions() *Options {
 	return &Options{
-		RateLimit:      1800,        // 1800 requests per minute (Google's default)
-		MaxRetries:     3,           // 3 retry attempts
-		InitialBackoff: time.Second, // Start with 1 second backoff
-		MaxBackoff:     time.Second * 32,
-		Timeout:        time.Second * 30,
-		MaxConcurrent:  10,
-		Debug:          false,
+		PoolSize:        4,
+		BatchSize:       100,
+		RetryAttempts:   3,
+		RetryDelay:      time.Second,
+		MaxRetryDelay:   time.Second * 30,
+		MaxFileSize:     40 * 1024 * 1024, // 40MB
+		DeleteTempFiles: true,
+		AllowedFormats:  []string{"jpg", "jpeg", "png", "gif", "bmp"},
 	}
 }
 
-// WithRateLimit sets the rate limit
-func WithRateLimit(limit int) OptionFunc {
+// WithPoolSize sets the number of concurrent processors
+func WithPoolSize(size int) OptionFunc {
 	return func(o *Options) {
-		o.RateLimit = limit
+		if size > 0 {
+			o.PoolSize = size
+		}
 	}
 }
 
-// WithMaxRetries sets the maximum number of retries
-func WithMaxRetries(retries int) OptionFunc {
+// WithBatchSize sets the batch size
+func WithBatchSize(size int) OptionFunc {
 	return func(o *Options) {
-		o.MaxRetries = retries
+		if size > 0 {
+			o.BatchSize = size
+		}
 	}
 }
 
-// WithInitialBackoff sets the initial backoff duration
-func WithInitialBackoff(backoff time.Duration) OptionFunc {
+// WithRetryAttempts sets the maximum retry attempts
+func WithRetryAttempts(attempts int) OptionFunc {
 	return func(o *Options) {
-		o.InitialBackoff = backoff
+		if attempts >= 0 {
+			o.RetryAttempts = attempts
+		}
 	}
 }
 
-// WithMaxBackoff sets the maximum backoff duration
-func WithMaxBackoff(backoff time.Duration) OptionFunc {
+// WithRetryDelay sets the retry delay
+func WithRetryDelay(delay time.Duration) OptionFunc {
 	return func(o *Options) {
-		o.MaxBackoff = backoff
+		if delay > 0 {
+			o.RetryDelay = delay
+		}
 	}
 }
 
-// WithTimeout sets the request timeout
-func WithTimeout(timeout time.Duration) OptionFunc {
+// WithMaxRetryDelay sets the maximum retry delay
+func WithMaxRetryDelay(delay time.Duration) OptionFunc {
 	return func(o *Options) {
-		o.Timeout = timeout
+		if delay > 0 {
+			o.MaxRetryDelay = delay
+		}
 	}
 }
 
-// WithMaxConcurrent sets the maximum concurrent requests
-func WithMaxConcurrent(max int) OptionFunc {
+// WithImageHandler sets the image handler
+func WithImageHandler(handler image.Handler) OptionFunc {
 	return func(o *Options) {
-		o.MaxConcurrent = max
+		o.ImageHandler = handler
 	}
 }
 
-// WithDebug enables or disables debug logging
-func WithDebug(debug bool) OptionFunc {
+// WithVisionClient sets the vision client
+func WithVisionClient(client *vision.Client) OptionFunc {
 	return func(o *Options) {
-		o.Debug = debug
+		o.VisionClient = client
 	}
 }
 
-// WithProjectID sets the Google Cloud project ID
-func WithProjectID(projectID string) OptionFunc {
+// WithMaxFileSize sets the maximum file size
+func WithMaxFileSize(size int64) OptionFunc {
 	return func(o *Options) {
-		o.ProjectID = projectID
+		if size > 0 {
+			o.MaxFileSize = size
+		}
 	}
 }
 
-// WithCredentials sets the path to service account credentials
-func WithCredentials(path string) OptionFunc {
+// WithOutputDir sets the output directory
+func WithOutputDir(dir string) OptionFunc {
 	return func(o *Options) {
-		o.Credentials = path
+		o.OutputDir = dir
 	}
 }
 
-// validateOptions validates the configuration options
-func validateOptions(o *Options) error {
-	if o.RateLimit < 1 {
-		return fmt.Errorf("rate limit must be at least 1")
+// WithTempDir sets the temporary directory
+func WithTempDir(dir string) OptionFunc {
+	return func(o *Options) {
+		o.TempDir = dir
+	}
+}
+
+// WithDeleteTempFiles sets whether to delete temporary files
+func WithDeleteTempFiles(delete bool) OptionFunc {
+	return func(o *Options) {
+		o.DeleteTempFiles = delete
+	}
+}
+
+// WithAllowedFormats sets the allowed image formats
+func WithAllowedFormats(formats []string) OptionFunc {
+	return func(o *Options) {
+		if len(formats) > 0 {
+			o.AllowedFormats = formats
+		}
+	}
+}
+
+// validate checks if the options are valid
+func (o *Options) validate() error {
+	if o.PoolSize < 1 {
+		return fmt.Errorf("pool size must be at least 1")
 	}
 
-	if o.MaxRetries < 0 {
-		return fmt.Errorf("max retries cannot be negative")
+	if o.BatchSize < 1 {
+		return fmt.Errorf("batch size must be at least 1")
 	}
 
-	if o.InitialBackoff < 0 {
-		return fmt.Errorf("initial backoff cannot be negative")
+	if o.RetryAttempts < 0 {
+		return fmt.Errorf("retry attempts cannot be negative")
 	}
 
-	if o.MaxBackoff < o.InitialBackoff {
-		return fmt.Errorf("max backoff must be greater than or equal to initial backoff")
+	if o.RetryDelay < 0 {
+		return fmt.Errorf("retry delay cannot be negative")
 	}
 
-	if o.Timeout < 0 {
-		return fmt.Errorf("timeout cannot be negative")
+	if o.MaxRetryDelay < o.RetryDelay {
+		return fmt.Errorf("maximum retry delay must be greater than or equal to retry delay")
 	}
 
-	if o.MaxConcurrent < 1 {
-		return fmt.Errorf("max concurrent must be at least 1")
+	if o.ImageHandler == nil {
+		return fmt.Errorf("image handler is required")
+	}
+
+	if o.VisionClient == nil {
+		return fmt.Errorf("vision client is required")
+	}
+
+	if o.MaxFileSize < 1 {
+		return fmt.Errorf("max file size must be at least 1 byte")
+	}
+
+	if o.OutputDir == "" {
+		return fmt.Errorf("output directory is required")
+	}
+
+	if len(o.AllowedFormats) == 0 {
+		return fmt.Errorf("at least one allowed format is required")
 	}
 
 	return nil

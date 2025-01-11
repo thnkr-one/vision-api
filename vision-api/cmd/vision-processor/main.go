@@ -11,7 +11,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/your-username/vision-api/config"
+	"github.com/thnkr-one/vision-api/config"
 	"github.com/your-username/vision-api/internal/image"
 	"github.com/your-username/vision-api/internal/processor"
 	"github.com/your-username/vision-api/internal/progress"
