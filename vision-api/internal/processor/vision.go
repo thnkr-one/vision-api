@@ -3,12 +3,11 @@ package processor
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"sync"
 	"time"
 
-	"github.com/your-username/vision-api/internal/utils"
+	"../utils"
 )
 
 // VisionProcessor handles image processing with Vision API integration

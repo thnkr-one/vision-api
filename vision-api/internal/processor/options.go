@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/thnkr-one/vision-api/internal/image"
-	"github.com/thnkr-one/vision-api/pkg/vision"
+	"../../pkg/vision"
+	"../image"
 )
 
-// Options contains configuration for the image processor
-type Options struct {
+// ProcessorOptions contains configuration for the image processor
+type ProcessorOptions struct {
 	// PoolSize is the number of concurrent processors
 	PoolSize int
 
@@ -163,7 +163,7 @@ func WithAllowedFormats(formats []string) OptionFunc {
 }
 
 // validate checks if the options are valid
-func (o *Options) validate() error {
+func (o *ProcessorOptions) validate() error {
 	if o.PoolSize < 1 {
 		return fmt.Errorf("pool size must be at least 1")
 	}

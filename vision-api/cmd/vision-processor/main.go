@@ -11,12 +11,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/thnkr-one/vision-api/config"
-	"github.com/your-username/vision-api/internal/image"
-	"github.com/your-username/vision-api/internal/processor"
-	"github.com/your-username/vision-api/internal/progress"
-	"github.com/your-username/vision-api/pkg/dataset"
-	"github.com/your-username/vision-api/pkg/vision"
+	"../../config"
+	"../../internal/image"
+	"../../internal/processor"
+	"../../internal/progress"
+	"../../pkg/dataset"
+	"../../pkg/vision"
 )
 
 var (
